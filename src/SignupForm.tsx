@@ -1,112 +1,43 @@
-import { useState } from 'react'
-// FIX 0 — WHY: SubmitEvent types the form's onSubmit handler (FormEvent is deprecated).
-// import { useState, type SubmitEvent } from 'react'
-
-// FIX 1 — WHY: one reusable, high-contrast focus ring for every control. focus-visible shows it for keyboard users only
-// (not on mouse click); ring-offset-2 adds a white gap so it stands out on any background. outline-hidden (unlike
-// outline-none) still shows in Windows High Contrast mode.
-// const focusRing = 'outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-600 focus-visible:ring-offset-2'
+import { useState, type SubmitEvent } from 'react'
 
 export default function SignupForm() {
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [updates, setUpdates] = useState(false)
-  const [nameError, setNameError] = useState('')
-  const [emailError, setEmailError] = useState('')
+  const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
 
-  function submit() {
-  // FIX 0 — WHY: the real <form> passes its submit event in; preventDefault stops the browser reloading the page.
-  // function submit(e: SubmitEvent<HTMLFormElement>) {
-    // e.preventDefault()
-    const nErr = name.trim() ? '' : 'Name is required.'
-    const eErr = /^\S+@\S+\.\S+$/.test(email) ? '' : 'Enter a valid email address, e.g. name@example.com.'
-    setNameError(nErr)
-    setEmailError(eErr)
-    setSent(!nErr && !eErr)
+  function submit(e?: SubmitEvent<HTMLFormElement>) {
+    e?.preventDefault()
+    const err = /^\S+@\S+\.\S+$/.test(email) ? '' : 'Enter a valid email, e.g. name@example.com.'
+    setError(err)
+    setSent(!err)
   }
 
   return (
-    // FLAW 0: a plain <div>, not a <form>. Pressing Return inside a field does nothing.
-    // FIX 0 — WHY: a real <form> plus a type="submit" button means Return in any field submits. noValidate turns off
-    // the browser's own popups so our accessible messages are used instead. Uncomment the <form> line below, then delete
-    // this <div> line (and the closing </div> at the bottom).
-    <div className="space-y-5">
-      {/* <form noValidate className="space-y-5" onSubmit={submit}> */}
+    <form noValidate onSubmit={submit}>
+      {/* FLAW 1a: a fake label. FIX — WHY: htmlFor gives the input its accessible name. */}
+      <div>Email</div>
+      {/* <label htmlFor="email">Email</label> */}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          {/* FLAW 1a: a <div> that only looks like a label. The input has no accessible name. */}
-          <div className="block text-sm font-medium">Name</div>
-          {/* FIX 1a — WHY: htmlFor links the label to the input's id. Screen readers announce "Name, edit text",
-              and clicking the label focuses the field. */}
-          {/* <label htmlFor="name" className="block text-sm font-medium">Name</label> */}
+      {/* FLAW 1b: outline none hides focus. FIX — WHY: keep the focus ring; aria links the error to the input. */}
+      <input style={{ outline: 'none' }} value={email} onChange={(e) => setEmail(e.target.value)} />
+      {/* <input id="email" type="email" aria-invalid={!!error} aria-describedby="email-error" value={email} onChange={(e) => setEmail(e.target.value)} /> */}
 
-          {/* FLAW 1b: outline-none deletes the browser's focus indicator. Keyboard users can't see where they are. */}
-          <input
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 outline-none"
-            placeholder="Jane Doe"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          {/* FIX 1b + 4 — WHY: the focus ring replaces outline-none. aria-invalid makes the screen reader say "invalid entry";
-              aria-describedby points at the error's id, so the message is read whenever the field gets focus. */}
-          {/* <input id="name" aria-invalid={nameError ? true : undefined} aria-describedby="name-error" className={`mt-1 w-full rounded-md border border-slate-300 px-3 py-2 ${focusRing}`} placeholder="Jane Doe" value={name} onChange={(e) => setName(e.target.value)} /> */}
+      {/* FLAW 2: silent error. FIX — WHY: aria-live announces it when the text changes. */}
+      <p className="error">{error}</p>
+      {/* <p id="email-error" aria-live="polite" className="error">{error}</p> */}
 
-          {/* FLAW 4: just red text. Not linked to the input and never announced. */}
-          <p className="mt-1 text-sm text-red-600">{nameError}</p>
-          {/* FIX 4 — WHY: id is the target of aria-describedby; aria-live="polite" announces the text as soon as it changes.
-              Keep the <p> always rendered so only its text changes, otherwise the announcement can be missed. */}
-          {/* <p id="name-error" aria-live="polite" className="mt-1 text-sm text-red-600">{nameError}</p> */}
-        </div>
+      {/* FLAW 3: a div "checkbox", Tab skips it. FIX — WHY: a native checkbox is focusable and announces its state. */}
+      <div onClick={() => setUpdates(!updates)}>{updates ? '☑' : '☐'} Send me updates</div>
+      {/* <label><input type="checkbox" checked={updates} onChange={(e) => setUpdates(e.target.checked)} />Send me updates</label> */}
 
-        <div>
-          {/* FLAW 1a: same fake label. */}
-          <div className="block text-sm font-medium">Email</div>
-          {/* FIX 1a — WHY: same as Name, gives the input its accessible name. */}
-          {/* <label htmlFor="email" className="block text-sm font-medium">Email</label> */}
+      {/* FLAW 4: a div "button", not focusable. FIX — WHY: a real button works with Tab, Return and Space. */}
+      <div className="btn" onClick={() => submit()}>Subscribe</div>
+      {/* <button>Subscribe</button> */}
 
-          {/* FLAW 1b: no focus ring, no error wiring. */}
-          <input
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 outline-none"
-            placeholder="jane@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          {/* FIX 1b + 4 — WHY: same as Name. type="email" also brings up the email keyboard on mobile. */}
-          {/* <input id="email" type="email" aria-invalid={emailError ? true : undefined} aria-describedby="email-error" className={`mt-1 w-full rounded-md border border-slate-300 px-3 py-2 ${focusRing}`} placeholder="jane@example.com" value={email} onChange={(e) => setEmail(e.target.value)} /> */}
-
-          {/* FLAW 4: silent error. */}
-          <p className="mt-1 text-sm text-red-600">{emailError}</p>
-          {/* FIX 4 — WHY: same as Name, linked and announced. */}
-          {/* <p id="email-error" aria-live="polite" className="mt-1 text-sm text-red-600">{emailError}</p> */}
-        </div>
-      </div>
-
-      {/* FLAW 2: a div "checkbox". No focus, no role, no checked state. Tab skips it, Space does nothing. */}
-      <div className="flex cursor-pointer items-center gap-2" onClick={() => setUpdates(!updates)}>
-        <div className={`h-5 w-5 rounded border border-slate-400 ${updates ? 'bg-indigo-600' : 'bg-white'}`} />
-        <span>Send me product updates</span>
-      </div>
-      {/* FIX 2 — WHY: a native checkbox is focusable, toggles with Space and announces "checked / not checked" for free.
-          Wrapping it in <label> gives it a name and keeps the text clickable. */}
-      {/* <label className="flex w-fit items-center gap-2"><input type="checkbox" className={`h-5 w-5 accent-indigo-600 ${focusRing}`} checked={updates} onChange={(e) => setUpdates(e.target.checked)} />Send me product updates</label> */}
-
-      {/* FLAW 3: a div "button". Not in the Tab order, and Return/Space do nothing. Keyboard users can't submit. */}
-      <div className="inline-block cursor-pointer rounded-md bg-indigo-600 px-4 py-2 font-medium text-white" onClick={submit}>
-        Subscribe
-      </div>
-      {/* FIX 3 — WHY: a native <button> is focusable and works with Return and Space. type="submit" fires the form's
-          onSubmit, so Return inside any field submits too. */}
-      {/* <button type="submit" className={`rounded-md bg-indigo-600 px-4 py-2 font-medium text-white ${focusRing}`}>Subscribe</button> */}
-
-      {/* FLAW 5: the success message isn't in a live region either. */}
-      <p className="text-sm text-green-700">{sent && 'Thanks! You are subscribed.'}</p>
-      {/* FIX 5 — WHY: screen readers announce the confirmation without moving focus. */}
-      {/* <p role="status" aria-live="polite" className="text-sm text-green-700">{sent && 'Thanks! You are subscribed.'}</p> */}
-
-      {/* FIX 0 — WHY: closes the <form> opened at the top. Delete the </div> below when you uncomment this. */}
-      {/* </form> */}
-    </div>
+      {/* FLAW 5: success isn't announced. FIX — WHY: role="status" reads it out without moving focus. */}
+      <p className="ok">{sent && 'Thanks! You are subscribed.'}</p>
+      {/* <p role="status" className="ok">{sent && 'Thanks! You are subscribed.'}</p> */}
+    </form>
   )
 }
